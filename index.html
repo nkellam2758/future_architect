@@ -793,32 +793,55 @@
 </div>
 
 <script>
-// ── File handling ──────────────────────────────────────────────
-const gn1File = document.getElementById('gn1File');
-const gn1FileName = document.getElementById('gn1FileName');
+// ── Drag and drop for upload zones ─────────────────────────────
+function setupDropZone(zoneId, inputId, fileNameId, validator) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  const nameEl = document.getElementById(fileNameId);
 
-gn1File.addEventListener('change', function() {
-  const count = this.files.length;
-  if (count > 0) {
-    gn1FileName.style.display = 'block';
-    gn1FileName.textContent = count === 1
-      ? '✓ ' + this.files[0].name
-      : `✓ ${count} files selected`;
+  function updateName(files) {
+    if (files.length > 0) {
+      nameEl.style.display = 'block';
+      nameEl.textContent = files.length === 1
+        ? '✓ ' + files[0].name
+        : `✓ ${files.length} files selected`;
+    }
   }
-});
 
-const cardsFile = document.getElementById('cardsFile');
-const cardsFileName = document.getElementById('cardsFileName');
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.style.borderColor = 'rgba(255,198,39,0.8)';
+    zone.style.background = 'rgba(255,198,39,0.1)';
+  });
 
-cardsFile.addEventListener('change', function() {
-  const count = this.files.length;
-  if (count > 0) {
-    cardsFileName.style.display = 'block';
-    cardsFileName.textContent = count === 1
-      ? '✓ ' + this.files[0].name
-      : `✓ ${count} files selected`;
-  }
-});
+  zone.addEventListener('dragleave', e => {
+    e.preventDefault();
+    zone.style.borderColor = '';
+    zone.style.background = '';
+  });
+
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.style.borderColor = '';
+    zone.style.background = '';
+    const files = Array.from(e.dataTransfer.files).filter(validator);
+    if (files.length === 0) return;
+    const dt = new DataTransfer();
+    files.forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    updateName(input.files);
+  });
+
+  input.addEventListener('change', () => updateName(input.files));
+}
+
+const isImageOrPDF = f => /\.(jpg|jpeg|png|pdf)$/i.test(f.name)
+  || f.type === 'image/jpeg' || f.type === 'image/png' || f.type === 'application/pdf';
+const isImageOnly = f => /\.(jpg|jpeg|png)$/i.test(f.name)
+  || f.type === 'image/jpeg' || f.type === 'image/png';
+
+setupDropZone('gn1Zone',   'gn1File',   'gn1FileName',   isImageOrPDF);
+setupDropZone('cardsZone', 'cardsFile', 'cardsFileName', isImageOnly);
 
 // ── Image helpers ───────────────────────────────────────────────
 // Resize + compress any image blob to JPEG, max 1200px, quality 0.82
