@@ -822,7 +822,7 @@ cardsFile.addEventListener('change', function() {
 
 // ── Image helpers ───────────────────────────────────────────────
 // Resize + compress any image blob to JPEG, max 1200px, quality 0.82
-function compressImage(blob, maxPx = 1200, quality = 0.82) {
+function compressImage(blob, maxPx = 800, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob);
     const img = new Image();
@@ -1042,6 +1042,13 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
   startLoading();
 
   // Build text payload
+  // Process uploaded files (GN1 + story card images, capped, compressed)
+  const gn1Files = Array.from(document.getElementById('gn1File').files)
+    .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
+  const cardFiles = Array.from(document.getElementById('cardsFile').files)
+    .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
+  const allFiles = [...gn1Files.slice(0, 3), ...cardFiles.slice(0, 2)];
+
   const questions = [
     "How far into the future is this story set? What's different about engineering education in this world?",
     "What from today's world persisted into this future — what couldn't be changed easily?",
@@ -1062,13 +1069,6 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
   questions.forEach((q, i) => {
     if (answers[i]) textContent += `\nQ${i+1}: ${q}\nA: ${answers[i]}\n`;
   });
-
-  // Process uploaded files (GN1 + story card images, capped at 8 total, compressed)
-  const gn1Files = Array.from(document.getElementById('gn1File').files)
-    .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
-  const cardFiles = Array.from(document.getElementById('cardsFile').files)
-    .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
-  const allFiles = [...gn1Files.slice(0, 5), ...cardFiles.slice(0, 3)]; // 5 GN1 + 3 cards max
 
   const contentBlocks = [];
   const fileErrors = [];
@@ -1100,7 +1100,7 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1800,
+          max_tokens: 1200,
           system: SYSTEM_PROMPT,
           messages
         })
