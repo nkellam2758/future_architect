@@ -656,10 +656,10 @@
 
       <label style="margin-top:20px;">Upload GN1</label>
       <div class="upload-zone" id="gn1Zone">
-        <input type="file" id="gn1File" accept="image/jpeg,image/png,.jpg,.jpeg,.png" multiple />
+        <input type="file" id="gn1File" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf" multiple />
         <div class="upload-icon">◈</div>
         <div class="upload-label">Click to upload your graphic novel</div>
-        <div class="upload-sub">JPG or PNG only · Multiple files OK · Up to 6 images</div>
+        <div class="upload-sub">JPG, PNG, or PDF · Multiple files OK · PDFs under 5MB please</div>
         <div class="file-name" id="gn1FileName"></div>
       </div>
 
@@ -1042,9 +1042,8 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
   startLoading();
 
   // Build text payload
-  // Process uploaded files (GN1 + story card images, capped, compressed)
-  const gn1Files = Array.from(document.getElementById('gn1File').files)
-    .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
+  // Process uploaded files
+  const gn1Files = Array.from(document.getElementById('gn1File').files);
   const cardFiles = Array.from(document.getElementById('cardsFile').files)
     .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
   const allFiles = [...gn1Files.slice(0, 3), ...cardFiles.slice(0, 2)];
@@ -1074,12 +1073,38 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
   const fileErrors = [];
 
   for (const file of allFiles) {
-    try {
-      setLoadingText(`Processing ${file.name}…`);
-      const b64 = await fileToBase64JPEG(file);
-      contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
-    } catch (err) {
-      fileErrors.push(err.message);
+    const isPDF = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
+                 || /\.(jpg|jpeg|png)$/i.test(file.name);
+
+    if (isPDF) {
+      if (file.size > 5 * 1024 * 1024) {
+        fileErrors.push(`"${file.name}" is over 5MB — please compress it and re-upload.`);
+        continue;
+      }
+      try {
+        setLoadingText(`Processing ${file.name}…`);
+        const b64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = () => reject(new Error('FileReader failed'));
+          reader.readAsDataURL(file);
+        });
+        contentBlocks.push({
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: b64 }
+        });
+      } catch (err) {
+        fileErrors.push(`Could not process "${file.name}": ${err.message}`);
+      }
+    } else if (isImage) {
+      try {
+        setLoadingText(`Processing ${file.name}…`);
+        const b64 = await fileToBase64JPEG(file);
+        contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
+      } catch (err) {
+        fileErrors.push(`Could not process "${file.name}": ${err.message}`);
+      }
     }
   }
 
