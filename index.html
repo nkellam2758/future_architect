@@ -664,8 +664,15 @@
       </div>
 
       <label style="margin-top:20px;">Your GN1 Story Cards <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
-      <div class="story-cards-input">
-        <textarea id="storyCards" placeholder="Paste the text from your Story Architect cards here — protagonist description, labyrinth, sacred fire, etc. Even rough notes are fine." rows="5"></textarea>
+      <div class="upload-zone" id="cardsZone">
+        <input type="file" id="cardsFile" accept="image/jpeg,image/png,.jpg,.jpeg,.png" multiple />
+        <div class="upload-icon">✦</div>
+        <div class="upload-label">Click to upload screenshots of your story cards</div>
+        <div class="upload-sub">JPG or PNG · Multiple files OK</div>
+        <div class="file-name" id="cardsFileName"></div>
+      </div>
+      <div class="story-cards-input" style="margin-top:10px;">
+        <textarea id="storyCards" placeholder="Or paste any story card text here — protagonist description, labyrinth, sacred fire, etc. Either works, or both." rows="4"></textarea>
       </div>
     </div>
 
@@ -795,6 +802,19 @@ gn1File.addEventListener('change', function() {
   if (count > 0) {
     gn1FileName.style.display = 'block';
     gn1FileName.textContent = count === 1
+      ? '✓ ' + this.files[0].name
+      : `✓ ${count} files selected`;
+  }
+});
+
+const cardsFile = document.getElementById('cardsFile');
+const cardsFileName = document.getElementById('cardsFileName');
+
+cardsFile.addEventListener('change', function() {
+  const count = this.files.length;
+  if (count > 0) {
+    cardsFileName.style.display = 'block';
+    cardsFileName.textContent = count === 1
       ? '✓ ' + this.files[0].name
       : `✓ ${count} files selected`;
   }
@@ -1036,20 +1056,24 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
   ];
 
   let textContent = `Student: ${name || 'Anonymous'}\n\n`;
-  if (storyCards) textContent += `GN1 Story Cards:\n${storyCards}\n\n`;
+  if (storyCards) textContent += `GN1 Story Cards (text):\n${storyCards}\n\n`;
+  if (cardFiles.length > 0) textContent += `GN1 Story Cards: ${cardFiles.length} image(s) uploaded above.\n\n`;
   textContent += `Reflection Questions:\n`;
   questions.forEach((q, i) => {
     if (answers[i]) textContent += `\nQ${i+1}: ${q}\nA: ${answers[i]}\n`;
   });
 
-  // Process uploaded files (multiple, capped at 6, compressed)
-  const files = Array.from(document.getElementById('gn1File').files)
+  // Process uploaded files (GN1 + story card images, capped at 8 total, compressed)
+  const gn1Files = Array.from(document.getElementById('gn1File').files)
     .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
+  const cardFiles = Array.from(document.getElementById('cardsFile').files)
+    .filter(f => /\.(jpg|jpeg|png)$/i.test(f.name) || f.type === 'image/jpeg' || f.type === 'image/png');
+  const allFiles = [...gn1Files.slice(0, 5), ...cardFiles.slice(0, 3)]; // 5 GN1 + 3 cards max
 
   const contentBlocks = [];
   const fileErrors = [];
 
-  for (const file of files.slice(0, 6)) {
+  for (const file of allFiles) {
     try {
       setLoadingText(`Processing ${file.name}…`);
       const b64 = await fileToBase64JPEG(file);
